@@ -198,7 +198,7 @@ contract JuicerRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 _pending = user.amount.mul(pool.accWinePerShare).div(1e18).sub(user.rewardDebt);
+            uint256 _pending = user.amount.mul(pool.accJuicerPerShare).div(1e18).sub(user.rewardDebt);
             if (_pending > 0) {
                 safeJuicerTransfer(_sender, _pending);
                 emit RewardPaid(_sender, _pending);
