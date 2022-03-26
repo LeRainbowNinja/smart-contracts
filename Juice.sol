@@ -96,7 +96,7 @@ contract Juice is ERC20Burnable, Operator {
         require(_airdropWallet != address(0), "!_airdropWallet");
         rewardPoolDistributed = true;
         _mint(_genesisPool, INITIAL_GENESIS_POOL_DISTRIBUTION);
-        _mint(_juicePool, INITIAL_GRAPE_POOL_DISTRIBUTION);
+        _mint(_juicePool, INITIAL_JUICE_POOL_DISTRIBUTION);
         _mint(_airdropWallet, INITIAL_AIRDROP_WALLET_DISTRIBUTION);
     }
 
