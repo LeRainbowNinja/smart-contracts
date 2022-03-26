@@ -30,7 +30,7 @@ contract JuiceRewardPool {
         bool isStarted; // if lastRewardTime has passed
     }
 
-    IERC20 public grape;
+    IERC20 public juice;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
