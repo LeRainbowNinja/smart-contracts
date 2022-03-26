@@ -50,7 +50,7 @@ contract JuiceRewardPool {
     uint256[3] public epochEndTimes;
 
     // Reward per second for each of 2 epochs (last item is equal to 0 - for sanity).
-    uint256[3] public epochGrapePerSecond;
+    uint256[3] public epochJuicePerSecond;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -112,7 +112,7 @@ contract JuiceRewardPool {
             }
         }
         bool _isStarted = (_lastRewardTime <= poolStartTime) || (_lastRewardTime <= block.timestamp);
-        poolInfo.push(PoolInfo({token: _token, allocPoint: _allocPoint, lastRewardTime: _lastRewardTime, accGrapePerShare: 0, isStarted: _isStarted}));
+        poolInfo.push(PoolInfo({token: _token, allocPoint: _allocPoint, lastRewardTime: _lastRewardTime, accJuicePerShare: 0, isStarted: _isStarted}));
         if (_isStarted) {
             totalAllocPoint = totalAllocPoint.add(_allocPoint);
         }
@@ -272,7 +272,7 @@ contract JuiceRewardPool {
     ) external onlyOperator {
         if (block.timestamp < epochEndTimes[1] + 30 days) {
             // do not allow to drain token if less than 30 days after farming
-            require(_token != grape, "!grape");
+            require(_token != juice, "!juice");
             uint256 length = poolInfo.length;
             for (uint256 pid = 0; pid < length; ++pid) {
                 PoolInfo storage pool = poolInfo[pid];
