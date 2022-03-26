@@ -38,21 +38,21 @@ contract Treasury is ContractGuard {
 
     // exclusions from total supply
     address[] public excludedFromTotalSupply = [
-        address(0xB7e1E341b2CBCc7d1EdF4DC6E5e962aE5C621ca5), // GrapeGenesisRewardPool
-        address(0x04b79c851ed1A36549C6151189c79EC0eaBca745) // GrapeRewardPool
+        address(0xB7e1E341b2CBCc7d1EdF4DC6E5e962aE5C621ca5), // JuiceGenesisRewardPool
+        address(0x04b79c851ed1A36549C6151189c79EC0eaBca745) // JuiceRewardPool
     ];
 
     // core components
-    address public grape;
-    address public gbond;
-    address public wine;
+    address public juice;
+    address public jbond;
+    address public juicer;
 
     address public boardroom;
-    address public grapeOracle;
+    address public juiceOracle;
 
     // price
-    uint256 public grapePriceOne;
-    uint256 public grapePriceCeiling;
+    uint256 public juciePriceOne;
+    uint256 public juicePriceCeiling;
 
     uint256 public seigniorageSaved;
 
@@ -65,18 +65,18 @@ contract Treasury is ContractGuard {
     uint256 public maxSupplyContractionPercent;
     uint256 public maxDebtRatioPercent;
 
-    // 28 first epochs (1 week) with 4.5% expansion regardless of GRAPE price
+    // 28 first epochs (1 week) with 4.5% expansion regardless of JUICE price
     uint256 public bootstrapEpochs;
     uint256 public bootstrapSupplyExpansionPercent;
 
     /* =================== Added variables =================== */
-    uint256 public previousEpochGrapePrice;
+    uint256 public previousEpochJuicePrice;
     uint256 public maxDiscountRate; // when purchasing bond
     uint256 public maxPremiumRate; // when redeeming bond
     uint256 public discountPercent;
     uint256 public premiumThreshold;
     uint256 public premiumPercent;
-    uint256 public mintingFactorForPayingDebt; // print extra GRAPE during debt phase
+    uint256 public mintingFactorForPayingDebt; // print extra JUICE during debt phase
 
     address public daoFund;
     uint256 public daoFundSharedPercent;
@@ -88,8 +88,8 @@ contract Treasury is ContractGuard {
 
     event Initialized(address indexed executor, uint256 at);
     event BurnedBonds(address indexed from, uint256 bondAmount);
-    event RedeemedBonds(address indexed from, uint256 grapeAmount, uint256 bondAmount);
-    event BoughtBonds(address indexed from, uint256 grapeAmount, uint256 bondAmount);
+    event RedeemedBonds(address indexed from, uint256 juiceAmount, uint256 bondAmount);
+    event BoughtBonds(address indexed from, uint256 juiceAmount, uint256 bondAmount);
     event TreasuryFunded(uint256 timestamp, uint256 seigniorage);
     event BoardroomFunded(uint256 timestamp, uint256 seigniorage);
     event DaoFundFunded(uint256 timestamp, uint256 seigniorage);
@@ -114,14 +114,14 @@ contract Treasury is ContractGuard {
         _;
 
         epoch = epoch.add(1);
-        epochSupplyContractionLeft = (getGrapePrice() > grapePriceCeiling) ? 0 : getGrapeCirculatingSupply().mul(maxSupplyContractionPercent).div(10000);
+        epochSupplyContractionLeft = (getJuicePrice() > juicePriceCeiling) ? 0 : getJuiceCirculatingSupply().mul(maxSupplyContractionPercent).div(10000);
     }
 
     modifier checkOperator() {
         require(
-            IBasisAsset(grape).operator() == address(this) &&
-                IBasisAsset(gbond).operator() == address(this) &&
-                IBasisAsset(wine).operator() == address(this) &&
+            IBasisAsset(juice).operator() == address(this) &&
+                IBasisAsset(jbond).operator() == address(this) &&
+                IBasisAsset(jucier).operator() == address(this) &&
                 Operator(boardroom).operator() == address(this),
             "Treasury: need more permission"
         );
@@ -147,19 +147,19 @@ contract Treasury is ContractGuard {
     }
 
     // oracle
-    function getGrapePrice() public view returns (uint256 grapePrice) {
-        try IOracle(grapeOracle).consult(grape, 1e18) returns (uint144 price) {
+    function getJuicePrice() public view returns (uint256 juicePrice) {
+        try IOracle(juiceOracle).consult(juice, 1e18) returns (uint144 price) {
             return uint256(price);
         } catch {
-            revert("Treasury: failed to consult grape price from the oracle");
+            revert("Treasury: failed to consult juice price from the oracle");
         }
     }
 
-    function getGrapeUpdatedPrice() public view returns (uint256 _grapePrice) {
-        try IOracle(grapeOracle).twap(grape, 1e18) returns (uint144 price) {
+    function getJuiceUpdatedPrice() public view returns (uint256 _juicePrice) {
+        try IOracle(juiceOracle).twap(juice, 1e18) returns (uint144 price) {
             return uint256(price);
         } catch {
-            revert("Treasury: failed to consult grape price from the oracle");
+            revert("Treasury: failed to consult juice price from the oracle");
         }
     }
 
@@ -168,41 +168,41 @@ contract Treasury is ContractGuard {
         return seigniorageSaved;
     }
 
-    function getBurnableGrapeLeft() public view returns (uint256 _burnableGrapeLeft) {
-        uint256 _grapePrice = getGrapePrice();
-        if (_grapePrice <= grapePriceOne) {
-            uint256 _grapeSupply = getGrapeCirculatingSupply();
-            uint256 _bondMaxSupply = _grapeSupply.mul(maxDebtRatioPercent).div(10000);
-            uint256 _bondSupply = IERC20(gbond).totalSupply();
+    function getBurnableJuiceLeft() public view returns (uint256 _burnableJuiceLeft) {
+        uint256 _juicePrice = getjuicePrice();
+        if (_juicePrice <= juicePriceOne) {
+            uint256 _juiceSupply = getJuiceCirculatingSupply();
+            uint256 _bondMaxSupply = _juiceSupply.mul(maxDebtRatioPercent).div(10000);
+            uint256 _bondSupply = IERC20(jbond).totalSupply();
             if (_bondMaxSupply > _bondSupply) {
                 uint256 _maxMintableBond = _bondMaxSupply.sub(_bondSupply);
-                uint256 _maxBurnableGrape = _maxMintableBond.mul(_grapePrice).div(1e18);
-                _burnableGrapeLeft = Math.min(epochSupplyContractionLeft, _maxBurnableGrape);
+                uint256 _maxBurnableJuice = _maxMintableBond.mul(_juicePrice).div(1e18);
+                _burnableJuiceLeft = Math.min(epochSupplyContractionLeft, _maxBurnableJuice);
             }
         }
     }
 
     function getRedeemableBonds() public view returns (uint256 _redeemableBonds) {
-        uint256 _grapePrice = getGrapePrice();
-        if (_grapePrice > grapePriceCeiling) {
-            uint256 _totalGrape = IERC20(grape).balanceOf(address(this));
+        uint256 _juicePrice = getJuicePrice();
+        if (_juicePrice > juicePriceCeiling) {
+            uint256 _totalJuice = IERC20(juice).balanceOf(address(this));
             uint256 _rate = getBondPremiumRate();
             if (_rate > 0) {
-                _redeemableBonds = _totalGrape.mul(1e18).div(_rate);
+                _redeemableBonds = _totalJuice.mul(1e18).div(_rate);
             }
         }
     }
 
     function getBondDiscountRate() public view returns (uint256 _rate) {
-        uint256 _grapePrice = getGrapePrice();
-        if (_grapePrice <= grapePriceOne) {
+        uint256 _juicePrice = getJuicePrice();
+        if (_juicePrice <= juicePriceOne) {
             if (discountPercent == 0) {
                 // no discount
-                _rate = grapePriceOne;
+                _rate = juicePriceOne;
             } else {
-                uint256 _bondAmount = grapePriceOne.mul(1e18).div(_grapePrice); // to burn 1 GRAPE
-                uint256 _discountAmount = _bondAmount.sub(grapePriceOne).mul(discountPercent).div(10000);
-                _rate = grapePriceOne.add(_discountAmount);
+                uint256 _bondAmount = juicePriceOne.mul(1e18).div(_juicePrice); // to burn 1 JUICE
+                uint256 _discountAmount = _bondAmount.sub(juicePriceOne).mul(discountPercent).div(10000);
+                _rate = juicePriceOne.add(_discountAmount);
                 if (maxDiscountRate > 0 && _rate > maxDiscountRate) {
                     _rate = maxDiscountRate;
                 }
@@ -211,19 +211,19 @@ contract Treasury is ContractGuard {
     }
 
     function getBondPremiumRate() public view returns (uint256 _rate) {
-        uint256 _grapePrice = getGrapePrice();
-        if (_grapePrice > grapePriceCeiling) {
-            uint256 _grapePricePremiumThreshold = grapePriceOne.mul(premiumThreshold).div(100);
-            if (_grapePrice >= _grapePricePremiumThreshold) {
+        uint256 _juicePrice = getJuicePrice();
+        if (_juicePrice > juicePriceCeiling) {
+            uint256 _juicePricePremiumThreshold = juicePriceOne.mul(premiumThreshold).div(100);
+            if (_juicePrice >= _grapePricePremiumThreshold) {
                 //Price > 1.10
-                uint256 _premiumAmount = _grapePrice.sub(grapePriceOne).mul(premiumPercent).div(10000);
-                _rate = grapePriceOne.add(_premiumAmount);
+                uint256 _premiumAmount = _juicePrice.sub(grapePriceOne).mul(premiumPercent).div(10000);
+                _rate = juicePriceOne.add(_premiumAmount);
                 if (maxPremiumRate > 0 && _rate > maxPremiumRate) {
                     _rate = maxPremiumRate;
                 }
             } else {
                 // no premium bonus
-                _rate = grapePriceOne;
+                _rate = juicePriceOne;
             }
         }
     }
@@ -231,22 +231,22 @@ contract Treasury is ContractGuard {
     /* ========== GOVERNANCE ========== */
 
     function initialize(
-        address _grape,
-        address _gbond,
-        address _wine,
-        address _grapeOracle,
+        address _juice,
+        address _jbond,
+        address _juicer,
+        address _juiceOracle,
         address _boardroom,
         uint256 _startTime
     ) public notInitialized {
-        grape = _grape;
-        gbond = _gbond;
-        wine = _wine;
-        grapeOracle = _grapeOracle;
+        juice = _juice;
+        jbond = _jbond;
+        juicer = _juicer;
+        juiceOracle = _juiceOracle;
         boardroom = _boardroom;
         startTime = _startTime;
 
-        grapePriceOne = 10**18; // This is to allow a PEG of 1 GRAPE per MIM
-        grapePriceCeiling = grapePriceOne.mul(101).div(100);
+        juicePriceOne = 10**18; // This is to allow a PEG of 1 JUICE per MIM
+        juicePriceCeiling = juicePriceOne.mul(101).div(100);
 
         // Dynamic max expansion percent
         supplyTiers = [0 ether, 10000 ether, 20000 ether, 30000 ether, 40000 ether, 50000 ether, 100000 ether, 200000 ether, 500000 ether];
@@ -256,8 +256,8 @@ contract Treasury is ContractGuard {
 
         bondDepletionFloorPercent = 10000; // 100% of Bond supply for depletion floor
         seigniorageExpansionFloorPercent = 3500; // At least 35% of expansion reserved for boardroom
-        maxSupplyContractionPercent = 300; // Upto 3.0% supply for contraction (to burn GRAPE and mint GBOND)
-        maxDebtRatioPercent = 4000; // Upto 40% supply of GBOND to purchase
+        maxSupplyContractionPercent = 300; // Upto 3.0% supply for contraction (to burn JUICE and mint JBOND)
+        maxDebtRatioPercent = 4000; // Upto 40% supply of JBOND to purchase
 
         premiumThreshold = 110;
         premiumPercent = 7000;
@@ -267,7 +267,7 @@ contract Treasury is ContractGuard {
         bootstrapSupplyExpansionPercent = 450;
 
         // set seigniorageSaved to it's balance
-        seigniorageSaved = IERC20(grape).balanceOf(address(this));
+        seigniorageSaved = IERC20(juice).balanceOf(address(this));
 
         initialized = true;
         operator = msg.sender;
@@ -282,13 +282,13 @@ contract Treasury is ContractGuard {
         boardroom = _boardroom;
     }
 
-    function setGrapeOracle(address _grapeOracle) external onlyOperator {
-        grapeOracle = _grapeOracle;
+    function setJuiceOracle(address _juiceOracle) external onlyOperator {
+        juiceOracle = _juiceOracle;
     }
 
-    function setGrapePriceCeiling(uint256 _grapePriceCeiling) external onlyOperator {
-        require(_grapePriceCeiling >= grapePriceOne && _grapePriceCeiling <= grapePriceOne.mul(120).div(100), "out of range"); // [$1.0, $1.2]
-        grapePriceCeiling = _grapePriceCeiling;
+    function setJuicePriceCeiling(uint256 _juicePriceCeiling) external onlyOperator {
+        require(_juicePriceCeiling >= juicePriceOne && _juicePriceCeiling <= juicePriceOne.mul(120).div(100), "out of range"); // [$1.0, $1.2]
+        juicePriceCeiling = _juicePriceCeiling;
     }
 
     function setMaxSupplyExpansionPercents(uint256 _maxSupplyExpansionPercent) external onlyOperator {
@@ -369,7 +369,7 @@ contract Treasury is ContractGuard {
     }
 
     function setPremiumThreshold(uint256 _premiumThreshold) external onlyOperator {
-        require(_premiumThreshold >= grapePriceCeiling, "_premiumThreshold exceeds grapePriceCeiling");
+        require(_premiumThreshold >= juicePriceCeiling, "_premiumThreshold exceeds juicePriceCeiling");
         require(_premiumThreshold <= 150, "_premiumThreshold is higher than 1.5");
         premiumThreshold = _premiumThreshold;
     }
@@ -386,16 +386,16 @@ contract Treasury is ContractGuard {
 
     /* ========== MUTABLE FUNCTIONS ========== */
 
-    function _updateGrapePrice() internal {
-        try IOracle(grapeOracle).update() {} catch {}
+    function _updateJuicePrice() internal {
+        try IOracle(juiceOracle).update() {} catch {}
     }
 
-    function getGrapeCirculatingSupply() public view returns (uint256) {
-        IERC20 grapeErc20 = IERC20(grape);
-        uint256 totalSupply = grapeErc20.totalSupply();
+    function getJuiceCirculatingSupply() public view returns (uint256) {
+        IERC20 juiceErc20 = IERC20(juice);
+        uint256 totalSupply = juiceErc20.totalSupply();
         uint256 balanceExcluded = 0;
         for (uint8 entryId = 0; entryId < excludedFromTotalSupply.length; ++entryId) {
-            balanceExcluded = balanceExcluded.add(grapeErc20.balanceOf(excludedFromTotalSupply[entryId]));
+            balanceExcluded = balanceExcluded.add(juiceErc20.balanceOf(excludedFromTotalSupply[entryId]));
         }
         return totalSupply.sub(balanceExcluded);
     }
@@ -403,84 +403,84 @@ contract Treasury is ContractGuard {
     function buyBonds(uint256 _grapeAmount, uint256 targetPrice) external onlyOneBlock checkCondition checkOperator {
         require(_grapeAmount > 0, "Treasury: cannot purchase bonds with zero amount");
 
-        uint256 grapePrice = getGrapePrice();
-        require(grapePrice == targetPrice, "Treasury: GRAPE price moved");
+        uint256 juicePrice = getJuicePrice();
+        require(juicePrice == targetPrice, "Treasury: JUICE price moved");
         require(
-            grapePrice < grapePriceOne, // price < $1
-            "Treasury: grapePrice not eligible for bond purchase"
+            juicePrice < juicePriceOne, // price < $1
+            "Treasury: juicePrice not eligible for bond purchase"
         );
 
-        require(_grapeAmount <= epochSupplyContractionLeft, "Treasury: not enough bond left to purchase");
+        require(_juiceAmount <= epochSupplyContractionLeft, "Treasury: not enough bond left to purchase");
 
         uint256 _rate = getBondDiscountRate();
         require(_rate > 0, "Treasury: invalid bond rate");
 
-        uint256 _bondAmount = _grapeAmount.mul(_rate).div(1e18);
-        uint256 grapeSupply = getGrapeCirculatingSupply();
+        uint256 _bondAmount = _juiceAmount.mul(_rate).div(1e18);
+        uint256 juiceSupply = getJuiceCirculatingSupply();
         uint256 newBondSupply = IERC20(gbond).totalSupply().add(_bondAmount);
-        require(newBondSupply <= grapeSupply.mul(maxDebtRatioPercent).div(10000), "over max debt ratio");
+        require(newBondSupply <= juiceSupply.mul(maxDebtRatioPercent).div(10000), "over max debt ratio");
 
-        IBasisAsset(grape).burnFrom(msg.sender, _grapeAmount);
-        IBasisAsset(gbond).mint(msg.sender, _bondAmount);
+        IBasisAsset(juice).burnFrom(msg.sender, _juiceAmount);
+        IBasisAsset(jbond).mint(msg.sender, _bondAmount);
 
-        epochSupplyContractionLeft = epochSupplyContractionLeft.sub(_grapeAmount);
-        _updateGrapePrice();
+        epochSupplyContractionLeft = epochSupplyContractionLeft.sub(_juiceAmount);
+        _updateJuicePrice();
 
-        emit BoughtBonds(msg.sender, _grapeAmount, _bondAmount);
+        emit BoughtBonds(msg.sender, _juiceAmount, _bondAmount);
     }
 
     function redeemBonds(uint256 _bondAmount, uint256 targetPrice) external onlyOneBlock checkCondition checkOperator {
         require(_bondAmount > 0, "Treasury: cannot redeem bonds with zero amount");
 
-        uint256 grapePrice = getGrapePrice();
-        require(grapePrice == targetPrice, "Treasury: GRAPE price moved");
+        uint256 juicePrice = getJuicePrice();
+        require(juicePrice == targetPrice, "Treasury: JUICE price moved");
         require(
-            grapePrice > grapePriceCeiling, // price > $1.01
-            "Treasury: grapePrice not eligible for bond purchase"
+            juicePrice > juicePriceCeiling, // price > $1.01
+            "Treasury: juicePrice not eligible for bond purchase"
         );
 
         uint256 _rate = getBondPremiumRate();
         require(_rate > 0, "Treasury: invalid bond rate");
 
-        uint256 _grapeAmount = _bondAmount.mul(_rate).div(1e18);
-        require(IERC20(grape).balanceOf(address(this)) >= _grapeAmount, "Treasury: treasury has no more budget");
+        uint256 _juiceAmount = _bondAmount.mul(_rate).div(1e18);
+        require(IERC20(juice).balanceOf(address(this)) >= _juiceAmount, "Treasury: treasury has no more budget");
 
-        seigniorageSaved = seigniorageSaved.sub(Math.min(seigniorageSaved, _grapeAmount));
+        seigniorageSaved = seigniorageSaved.sub(Math.min(seigniorageSaved, _juiceAmount));
 
-        IBasisAsset(gbond).burnFrom(msg.sender, _bondAmount);
-        IERC20(grape).safeTransfer(msg.sender, _grapeAmount);
+        IBasisAsset(jbond).burnFrom(msg.sender, _bondAmount);
+        IERC20(juice).safeTransfer(msg.sender, _juiceAmount);
 
-        _updateGrapePrice();
+        _updateJuicePrice();
 
-        emit RedeemedBonds(msg.sender, _grapeAmount, _bondAmount);
+        emit RedeemedBonds(msg.sender, _juiceAmount, _bondAmount);
     }
 
     function _sendToBoardroom(uint256 _amount) internal {
-        IBasisAsset(grape).mint(address(this), _amount);
+        IBasisAsset(juice).mint(address(this), _amount);
 
         uint256 _daoFundSharedAmount = 0;
         if (daoFundSharedPercent > 0) {
             _daoFundSharedAmount = _amount.mul(daoFundSharedPercent).div(10000);
-            IERC20(grape).transfer(daoFund, _daoFundSharedAmount);
+            IERC20(juice).transfer(daoFund, _daoFundSharedAmount);
             emit DaoFundFunded(now, _daoFundSharedAmount);
         }
 
         uint256 _devFundSharedAmount = 0;
         if (devFundSharedPercent > 0) {
             _devFundSharedAmount = _amount.mul(devFundSharedPercent).div(10000);
-            IERC20(grape).transfer(devFund, _devFundSharedAmount);
+            IERC20(juice).transfer(devFund, _devFundSharedAmount);
             emit DevFundFunded(now, _devFundSharedAmount);
         }
 
         _amount = _amount.sub(_daoFundSharedAmount).sub(_devFundSharedAmount);
 
-        IERC20(grape).safeApprove(boardroom, 0);
-        IERC20(grape).safeApprove(boardroom, _amount);
+        IERC20(juice).safeApprove(boardroom, 0);
+        IERC20(juice).safeApprove(boardroom, _amount);
         IBoardroom(boardroom).allocateSeigniorage(_amount);
         emit BoardroomFunded(now, _amount);
     }
 
-    function _calculateMaxSupplyExpansionPercent(uint256 _grapeSupply) internal returns (uint256) {
+    function _calculateMaxSupplyExpansionPercent(uint256 _juiceSupply) internal returns (uint256) {
         for (uint8 tierId = 8; tierId >= 0; --tierId) {
             if (_grapeSupply >= supplyTiers[tierId]) {
                 maxSupplyExpansionPercent = maxExpansionTiers[tierId];
@@ -491,29 +491,29 @@ contract Treasury is ContractGuard {
     }
 
     function allocateSeigniorage() external onlyOneBlock checkCondition checkEpoch checkOperator {
-        _updateGrapePrice();
-        previousEpochGrapePrice = getGrapePrice();
-        uint256 grapeSupply = getGrapeCirculatingSupply().sub(seigniorageSaved);
+        _updateJuicePrice();
+        previousEpochJuicePrice = getJuicePrice();
+        uint256 juiceSupply = getJuiceCirculatingSupply().sub(seigniorageSaved);
         if (epoch < bootstrapEpochs) {
             // 28 first epochs with 4.5% expansion
-            _sendToBoardroom(grapeSupply.mul(bootstrapSupplyExpansionPercent).div(10000));
+            _sendToBoardroom(juiceSupply.mul(bootstrapSupplyExpansionPercent).div(10000));
         } else {
-            if (previousEpochGrapePrice > grapePriceCeiling) {
-                // Expansion ($GRAPE Price > 1 $MIM): there is some seigniorage to be allocated
-                uint256 bondSupply = IERC20(gbond).totalSupply();
-                uint256 _percentage = previousEpochGrapePrice.sub(grapePriceOne);
+            if (previousEpochJuicePrice > juicePriceCeiling) {
+                // Expansion ($JUICE Price > 1 $MIM): there is some seigniorage to be allocated
+                uint256 bondSupply = IERC20(jbond).totalSupply();
+                uint256 _percentage = previousEpochJuicePrice.sub(juicePriceOne);
                 uint256 _savedForBond;
                 uint256 _savedForBoardroom;
-                uint256 _mse = _calculateMaxSupplyExpansionPercent(grapeSupply).mul(1e14);
+                uint256 _mse = _calculateMaxSupplyExpansionPercent(juiceSupply).mul(1e14);
                 if (_percentage > _mse) {
                     _percentage = _mse;
                 }
                 if (seigniorageSaved >= bondSupply.mul(bondDepletionFloorPercent).div(10000)) {
                     // saved enough to pay debt, mint as usual rate
-                    _savedForBoardroom = grapeSupply.mul(_percentage).div(1e18);
+                    _savedForBoardroom = juiceSupply.mul(_percentage).div(1e18);
                 } else {
                     // have not saved enough to pay debt, mint more
-                    uint256 _seigniorage = grapeSupply.mul(_percentage).div(1e18);
+                    uint256 _seigniorage = juiceSupply.mul(_percentage).div(1e18);
                     _savedForBoardroom = _seigniorage.mul(seigniorageExpansionFloorPercent).div(10000);
                     _savedForBond = _seigniorage.sub(_savedForBoardroom);
                     if (mintingFactorForPayingDebt > 0) {
@@ -525,7 +525,7 @@ contract Treasury is ContractGuard {
                 }
                 if (_savedForBond > 0) {
                     seigniorageSaved = seigniorageSaved.add(_savedForBond);
-                    IBasisAsset(grape).mint(address(this), _savedForBond);
+                    IBasisAsset(juice).mint(address(this), _savedForBond);
                     emit TreasuryFunded(now, _savedForBond);
                 }
             }
@@ -538,9 +538,9 @@ contract Treasury is ContractGuard {
         address _to
     ) external onlyOperator {
         // do not allow to drain core tokens
-        require(address(_token) != address(grape), "grape");
-        require(address(_token) != address(gbond), "bond");
-        require(address(_token) != address(wine), "share");
+        require(address(_token) != address(juice), "juice");
+        require(address(_token) != address(jbond), "bond");
+        require(address(_token) != address(juicer), "share");
         _token.safeTransfer(_to, _amount);
     }
 
