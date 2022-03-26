@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// Note that this pool has no minter key of GRAPE (rewards).
-// Instead, the governance will call GRAPE distributeReward method and send reward to this pool at the beginning.
-contract GrapeRewardPool {
+// Note that this pool has no minter key of JUICE (rewards).
+// Instead, the governance will call JUICE distributeReward method and send reward to this pool at the beginning.
+contract JuiceRewardPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -24,9 +24,9 @@ contract GrapeRewardPool {
     // Info of each pool.
     struct PoolInfo {
         IERC20 token; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. Grapes to distribute in the pool.
-        uint256 lastRewardTime; // Last time that Grapes distribution occurred.
-        uint256 accGrapePerShare; // Accumulated Grapes per share, times 1e18. See below.
+        uint256 allocPoint; // How many allocation points assigned to this pool. Juices to distribute in the pool.
+        uint256 lastRewardTime; // Last time that Juices distribution occurred.
+        uint256 accJuicePerShare; // Accumulated Juices per share, times 1e18. See below.
         bool isStarted; // if lastRewardTime has passed
     }
 
@@ -41,7 +41,7 @@ contract GrapeRewardPool {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
 
-    // The time when GRAPE mining starts.
+    // The time when JUICE mining starts.
     uint256 public poolStartTime;
 
     uint256[] public epochTotalRewards = [10800 ether, 10800 ether];
@@ -57,31 +57,31 @@ contract GrapeRewardPool {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
 
-    constructor(address _grape, uint256 _poolStartTime) public {
+    constructor(address _juice, uint256 _poolStartTime) public {
         require(block.timestamp < _poolStartTime, "late");
-        if (_grape != address(0)) grape = IERC20(_grape);
+        if (_juice != address(0)) juice = IERC20(_juice);
 
         poolStartTime = _poolStartTime;
 
         epochEndTimes[0] = poolStartTime + 4 days; // Day 2-5
         epochEndTimes[1] = epochEndTimes[0] + 5 days; // Day 6-10
 
-        epochGrapePerSecond[0] = epochTotalRewards[0].div(4 days);
-        epochGrapePerSecond[1] = epochTotalRewards[1].div(5 days);
+        epochJuicePerSecond[0] = epochTotalRewards[0].div(4 days);
+        epochJuicePerSecond[1] = epochTotalRewards[1].div(5 days);
 
-        epochGrapePerSecond[2] = 0;
+        epochJuicePerSecond[2] = 0;
         operator = msg.sender;
     }
 
     modifier onlyOperator() {
-        require(operator == msg.sender, "GrapeRewardPool: caller is not the operator");
+        require(operator == msg.sender, "JuiceRewardPool: caller is not the operator");
         _;
     }
 
     function checkPoolDuplicate(IERC20 _token) internal view {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
-            require(poolInfo[pid].token != _token, "GrapeRewardPool: existing pool?");
+            require(poolInfo[pid].token != _token, "JuiceRewardPool: existing pool?");
         }
     }
 
@@ -106,7 +106,7 @@ contract GrapeRewardPool {
                 }
             }
         } else {
-            // chef is cooking
+            // juicer is juicing
             if (_lastRewardTime == 0 || _lastRewardTime < block.timestamp) {
                 _lastRewardTime = block.timestamp;
             }
@@ -118,7 +118,7 @@ contract GrapeRewardPool {
         }
     }
 
-    // Update the given pool's GRAPE allocation point. Can only be called by the owner.
+    // Update the given pool's JUICE allocation point. Can only be called by the owner.
     function set(uint256 _pid, uint256 _allocPoint) public onlyOperator {
         massUpdatePools();
         PoolInfo storage pool = poolInfo[_pid];
@@ -133,37 +133,37 @@ contract GrapeRewardPool {
         for (uint8 epochId = 2; epochId >= 1; --epochId) {
             if (_toTime >= epochEndTimes[epochId - 1]) {
                 if (_fromTime >= epochEndTimes[epochId - 1]) {
-                    return _toTime.sub(_fromTime).mul(epochGrapePerSecond[epochId]);
+                    return _toTime.sub(_fromTime).mul(epochJuicePerSecond[epochId]);
                 }
 
-                uint256 _generatedReward = _toTime.sub(epochEndTimes[epochId - 1]).mul(epochGrapePerSecond[epochId]);
+                uint256 _generatedReward = _toTime.sub(epochEndTimes[epochId - 1]).mul(epochJuicePerSecond[epochId]);
                 if (epochId == 1) {
-                    return _generatedReward.add(epochEndTimes[0].sub(_fromTime).mul(epochGrapePerSecond[0]));
+                    return _generatedReward.add(epochEndTimes[0].sub(_fromTime).mul(epochJuicePerSecond[0]));
                 }
                 for (epochId = epochId - 1; epochId >= 1; --epochId) {
                     if (_fromTime >= epochEndTimes[epochId - 1]) {
-                        return _generatedReward.add(epochEndTimes[epochId].sub(_fromTime).mul(epochGrapePerSecond[epochId]));
+                        return _generatedReward.add(epochEndTimes[epochId].sub(_fromTime).mul(epochJuicePerSecond[epochId]));
                     }
-                    _generatedReward = _generatedReward.add(epochEndTimes[epochId].sub(epochEndTimes[epochId - 1]).mul(epochGrapePerSecond[epochId]));
+                    _generatedReward = _generatedReward.add(epochEndTimes[epochId].sub(epochEndTimes[epochId - 1]).mul(epochJuicePerSecond[epochId]));
                 }
-                return _generatedReward.add(epochEndTimes[0].sub(_fromTime).mul(epochGrapePerSecond[0]));
+                return _generatedReward.add(epochEndTimes[0].sub(_fromTime).mul(epochJuicePerSecond[0]));
             }
         }
-        return _toTime.sub(_fromTime).mul(epochGrapePerSecond[0]);
+        return _toTime.sub(_fromTime).mul(epochJuicePerSecond[0]);
     }
 
-    // View function to see pending GRAPEs on frontend.
-    function pendingGRAPE(uint256 _pid, address _user) external view returns (uint256) {
+    // View function to see pending JUICEs on frontend.
+    function pendingJUICE(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accGrapePerShare = pool.accGrapePerShare;
+        uint256 accJuicePerShare = pool.accJuicePerShare;
         uint256 tokenSupply = pool.token.balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTime && tokenSupply != 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _grapeReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
-            accGrapePerShare = accGrapePerShare.add(_grapeReward.mul(1e18).div(tokenSupply));
+            uint256 _juiceReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            accJuicePerShare = accJuicePerShare.add(_juiceReward.mul(1e18).div(tokenSupply));
         }
-        return user.amount.mul(accGrapePerShare).div(1e18).sub(user.rewardDebt);
+        return user.amount.mul(accJuicePerShare).div(1e18).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Expensive!
@@ -191,8 +191,8 @@ contract GrapeRewardPool {
         }
         if (totalAllocPoint > 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _grapeReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
-            pool.accGrapePerShare = pool.accGrapePerShare.add(_grapeReward.mul(1e18).div(tokenSupply));
+            uint256 _juiceReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            pool.accJuicePerShare = pool.accJuicePerShare.add(_juiceReward.mul(1e18).div(tokenSupply));
         }
         pool.lastRewardTime = block.timestamp;
     }
@@ -204,9 +204,9 @@ contract GrapeRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 _pending = user.amount.mul(pool.accGrapePerShare).div(1e18).sub(user.rewardDebt);
+            uint256 _pending = user.amount.mul(pool.accJuicePerShare).div(1e18).sub(user.rewardDebt);
             if (_pending > 0) {
-                safeGrapeTransfer(_sender, _pending);
+                safeJuiceTransfer(_sender, _pending);
                 emit RewardPaid(_sender, _pending);
             }
         }
@@ -214,7 +214,7 @@ contract GrapeRewardPool {
             pool.token.safeTransferFrom(_sender, address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accGrapePerShare).div(1e18);
+        user.rewardDebt = user.amount.mul(pool.accJuicePerShare).div(1e18);
         emit Deposit(_sender, _pid, _amount);
     }
 
@@ -225,16 +225,16 @@ contract GrapeRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 _pending = user.amount.mul(pool.accGrapePerShare).div(1e18).sub(user.rewardDebt);
+        uint256 _pending = user.amount.mul(pool.accJuicePerShare).div(1e18).sub(user.rewardDebt);
         if (_pending > 0) {
-            safeGrapeTransfer(_sender, _pending);
+            safeJuiceTransfer(_sender, _pending);
             emit RewardPaid(_sender, _pending);
         }
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.token.safeTransfer(_sender, _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accGrapePerShare).div(1e18);
+        user.rewardDebt = user.amount.mul(pool.accJuicePerShare).div(1e18);
         emit Withdraw(_sender, _pid, _amount);
     }
 
@@ -249,14 +249,14 @@ contract GrapeRewardPool {
         emit EmergencyWithdraw(msg.sender, _pid, _amount);
     }
 
-    // Safe grape transfer function, just in case if rounding error causes pool to not have enough Grapes.
-    function safeGrapeTransfer(address _to, uint256 _amount) internal {
-        uint256 _grapeBal = grape.balanceOf(address(this));
-        if (_grapeBal > 0) {
-            if (_amount > _grapeBal) {
-                grape.safeTransfer(_to, _grapeBal);
+    // Safe juice transfer function, just in case if rounding error causes pool to not have enough Juices.
+    function safeJuiceTransfer(address _to, uint256 _amount) internal {
+        uint256 _juiceBal = juice.balanceOf(address(this));
+        if (_juiceBal > 0) {
+            if (_amount > _juiceBal) {
+                juice.safeTransfer(_to, _juiceBal);
             } else {
-                grape.safeTransfer(_to, _amount);
+                juice.safeTransfer(_to, _amount);
             }
         }
     }
