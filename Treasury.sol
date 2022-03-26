@@ -214,9 +214,9 @@ contract Treasury is ContractGuard {
         uint256 _juicePrice = getJuicePrice();
         if (_juicePrice > juicePriceCeiling) {
             uint256 _juicePricePremiumThreshold = juicePriceOne.mul(premiumThreshold).div(100);
-            if (_juicePrice >= _grapePricePremiumThreshold) {
+            if (_juicePrice >= _juicePricePremiumThreshold) {
                 //Price > 1.10
-                uint256 _premiumAmount = _juicePrice.sub(grapePriceOne).mul(premiumPercent).div(10000);
+                uint256 _premiumAmount = _juicePrice.sub(juicePriceOne).mul(premiumPercent).div(10000);
                 _rate = juicePriceOne.add(_premiumAmount);
                 if (maxPremiumRate > 0 && _rate > maxPremiumRate) {
                     _rate = maxPremiumRate;
@@ -400,8 +400,8 @@ contract Treasury is ContractGuard {
         return totalSupply.sub(balanceExcluded);
     }
 
-    function buyBonds(uint256 _grapeAmount, uint256 targetPrice) external onlyOneBlock checkCondition checkOperator {
-        require(_grapeAmount > 0, "Treasury: cannot purchase bonds with zero amount");
+    function buyBonds(uint256 _juiceAmount, uint256 targetPrice) external onlyOneBlock checkCondition checkOperator {
+        require(_juiceAmount > 0, "Treasury: cannot purchase bonds with zero amount");
 
         uint256 juicePrice = getJuicePrice();
         require(juicePrice == targetPrice, "Treasury: JUICE price moved");
@@ -482,7 +482,7 @@ contract Treasury is ContractGuard {
 
     function _calculateMaxSupplyExpansionPercent(uint256 _juiceSupply) internal returns (uint256) {
         for (uint8 tierId = 8; tierId >= 0; --tierId) {
-            if (_grapeSupply >= supplyTiers[tierId]) {
+            if (_juiceSupply >= supplyTiers[tierId]) {
                 maxSupplyExpansionPercent = maxExpansionTiers[tierId];
                 break;
             }
