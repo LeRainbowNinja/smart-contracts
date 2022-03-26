@@ -7,27 +7,21 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "./owner/Operator.sol";
 
 /*
-
- ██████╗ ██████╗  █████╗ ██████╗ ███████╗    ███████╗██╗███╗   ██╗ █████╗ ███╗   ██╗ ██████╗███████╗
-██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██╔════╝    ██╔════╝██║████╗  ██║██╔══██╗████╗  ██║██╔════╝██╔════╝
-██║  ███╗██████╔╝███████║██████╔╝█████╗      █████╗  ██║██╔██╗ ██║███████║██╔██╗ ██║██║     █████╗  
-██║   ██║██╔══██╗██╔══██║██╔═══╝ ██╔══╝      ██╔══╝  ██║██║╚██╗██║██╔══██║██║╚██╗██║██║     ██╔══╝  
-╚██████╔╝██║  ██║██║  ██║██║     ███████╗    ██║     ██║██║ ╚████║██║  ██║██║ ╚████║╚██████╗███████╗
- ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝╚══════╝
+Juice Finance
                                                                                                     
 */
 
 
-contract GBond is ERC20Burnable, Operator {
+contract JBond is ERC20Burnable, Operator {
     /**
-     * @notice Constructs the GRAPE Bond ERC-20 contract.
+     * @notice Constructs the JUICE Bond ERC-20 contract.
      */
-    constructor() public ERC20("GBOND", "GBOND") {}
+    constructor() public ERC20("JBOND", "JBOND") {}
 
     /**
-     * @notice Operator mints grape bonds to a recipient
+     * @notice Operator mints juice bonds to a recipient
      * @param recipient_ The address of recipient
-     * @param amount_ The amount of grape bonds to mint to
+     * @param amount_ The amount of juice bonds to mint to
      * @return whether the process has been done
      */
     function mint(address recipient_, uint256 amount_) public onlyOperator returns (bool) {
