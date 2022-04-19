@@ -703,7 +703,7 @@ contract Boardroom is ShareWrapper, ContractGuard {
     // flags
     bool public initialized = false;
 
-    IERC20 public sdollar;
+    IERC20 public juice;
     ITreasury public treasury;
 
     mapping(address => Memberseat) public members;
